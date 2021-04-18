@@ -1,0 +1,28 @@
+Package: repoco
+Title: report tool collection with templates
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Syunsuke",
+           family = "Fukuda",
+           role = c("aut", "cre"),
+           email = "ok.xmonad@gmail.com")
+Description: repoco is tools to make a report pdf file and has templates collection.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+Imports: 
+    dplyr,
+    ggplot2,
+    gridExtra,
+    kableExtra,
+    knitr,
+    magrittr,
+    reti,
+    retiex,
+    rmarkdown,
+    stringr
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

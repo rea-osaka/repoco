@@ -72,19 +72,22 @@ newhouse_quarter_report <-
   # 新築住宅用のフィルタリング
   data_to_report <-
     reti_data %>%
-    reti::reti_filter_by_kind("R") %>%
-    dplyr::filter(stringr::str_detect(`建物用途`, "^住宅$") |
-                    stringr::str_detect(`建物用途`, "^住宅、駐車場$")) %>%
-    dplyr::filter(howold_building < 3) %>%
-    dplyr::filter(land_size < 500) %>%
-    retiex::filter_by_sd(`取引総額`)
+    new_hose_filter()
 
-  # レンダーの呼び出し
-  rmarkdown::render(input =
-                      system.file("template",
-                                  "newresi_quarter_report.Rmd",
-                                  package = "repoco"),
-                    output_file = output_file,
-                    output_dir = output_dir)
+  tryCatch({
+    rmarkdown::render(
+      input = system.file("template",
+                          "newresi_quarter_report.Rmd",
+                          package = "repoco"),
+      output_file = output_file,
+      output_dir = output_dir)
+  },
+  error = function(e){
+    message(paste0("make report Error!: ",title_to_report))
+    message(e)
+  }
+
+  )
+
 
 }

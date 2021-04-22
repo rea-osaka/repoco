@@ -2,5 +2,9 @@
 
 export(newhouse_quarter_report)
 export(render_wrapper)
+export(rolling_mean_linegraph)
+export(rolling_mean_table)
+export(simple_mean_linegraph)
+export(simple_mean_table)
 import(ggplot2)
 importFrom(magrittr,"%>%")

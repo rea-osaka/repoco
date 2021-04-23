@@ -6,23 +6,27 @@
 \usage{
 render_wrapper(
   df,
-  title,
   template_file,
-  output_file = NULL,
+  title = "",
+  author = "",
+  output_file = "",
   output_dir = "handouts/"
 )
 }
 \arguments{
-\item{df}{data.frame}
-
-\item{title}{title string}
+\item{df}{data.frame 主にretiデータ}
 
 \item{template_file}{rmarkdown file as template}
 
+\item{title}{title string}
+
+\item{author}{auther string}
+
 \item{output_file}{output file name}
 
-\item{output_dir}{output directory path}
+\item{output_dir}{output directory path デフォルトはカレントのhandouts}
 }
 \description{
-call rmarkdown render function with template.
+自作のテンプレートファイルを使って、レポートを作ります。
+出力ファイル名を省略すると、市名列から自動で補われます。
 }

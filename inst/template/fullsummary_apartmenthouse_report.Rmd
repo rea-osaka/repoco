@@ -1,0 +1,96 @@
+---
+title: '`r paste0(title_from_rwfunc, "に於ける共同住宅の取引価格の推移（四半期毎）")`'
+author: '`r author_from_rwfunc`'
+date: '`r Sys.Date()`'
+output: 
+  pdf_document:
+    latex_engine: lualatex
+    number_sections: true
+documentclass: ltjsarticle
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# グラフ内で日本語を表示するための処理テンプレート
+checkopt <- knitr::opts_knit$get("rmarkdown.pandoc.to") 
+if(is.null(checkopt)){checkopt <- ""}
+
+if (checkopt %in% c("beamer", "latex")) {
+  options(device = function(file, width = 7, height = 3, ...) {
+    cairo_pdf(tempfile(), width = width, height = height, ...)
+  })
+  knitr::opts_chunk$set(dev="cairo_pdf", dev.args=list(family="ipa"))
+}
+
+# このテンプレートについて
+
+# 外部から引き継ぐ変数
+# data_to_report      data.frame retiデータ等
+# title_to_report string     データ集合を表す範囲を表す名前
+target_data <- data_from_rwfunc
+target_name <- title_from_rwfunc
+
+# 外部から引き継ぐ変数の内
+# 次のものはタイトル等でそのまま使われる
+# title_from_rwfunc
+# author_from_rwfunc
+
+##########################################################
+#
+# //////////// カスタマイズ部分 ///////////
+#
+# 内部の変数
+# 以下の内容を作りたいレポートのテーマに即して書き換える
+##########################################################
+# report_theme テーマについてのタイトル
+report_theme <- "共同住宅の取引"
+
+# 注目する値
+# 取引総額系に特化している
+# target_value <- "取引総額"
+
+
+# theme_condition テーマの条件の文書
+theme_condition <- "
+- 土地と建物一体取引
+- 建物の用途が「共同住宅」を含む
+
+尚、対象データ全体の平均及び標準偏差を求め、
+その平均の位置から標準偏差の4倍より外にあるデータは
+はずれ値として除外しています。
+"
+
+# report_filter関数の定義
+# テーマに合わせてデータをどうフィルタリングするか定義する
+
+# library(tidyverse)
+# library(reti)
+report_filter <- function(df){
+  df %>% 
+    dplyr::filter(stringr::str_detect(`建物用途`, "共同住宅")) %>% 
+    retiex::filter_by_sd(`取引総額`)
+}
+
+target_data <- target_data %>% report_filter()
+
+```
+
+```{r child=system.file("template", "master_template_fullsummary_LB.Rmd", package = "repoco")}
+```
+

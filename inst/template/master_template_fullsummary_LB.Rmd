@@ -1,0 +1,569 @@
+# このレポートについて
+
+このレポートは、
+国土交通省が公表する「不動産取引価格情報」のデータに基づいて、
+`r target_name`の`r report_theme`の価格に関する統計データを作成し、
+その各期間の各統計数値の変化を数値とグラフでレポートするものです。
+不動産価格の動向把握の**参考として**利用してください。
+
+尚、国土交通省が公表する「不動産取引価格情報」は、
+以下のURLから取得することが出来ます。
+
+https://www.land.mlit.go.jp/webland/download.html
+
+
+
+## `r report_theme`について
+
+ここでいう「`r report_theme`」とは、
+不動産取引価格情報のデータから、
+次の条件で抽出したデータとしています。
+
+
+`r theme_condition`
+
+
+## 採用データ
+
+```{r include=FALSE}
+# 期間の自動取得
+
+term <- range(target_data$t_date)
+term_num <- retiex::calc_quarter_term(term[1],term[2])
+
+if(term_num %% 4 == 0){
+  term_str <- sprintf("%d年間", term_num %/% 4)
+  
+}else if(term_num < 4){
+  term_str <- 
+    sprintf("%d四半期間", term_num)
+  
+}else{
+  term_str <- 
+    sprintf("%d年と%d四半期間", term_num %/% 4, term_num %% 4)
+}
+
+
+about_term_message <-
+  stringr::str_c( 
+    "この分析では、",
+    sprintf("%sから、%sの%sについて、",
+            retiex::style_quarter_date(term[1]),
+            retiex::style_quarter_date(term[2]),
+            term_str),
+    sprintf("%sにおける%s",target_name, report_theme),
+    sprintf("に係る事例 %s 件を対象にしています。",
+            format(nrow(target_data), big.mark =","))
+  )
+
+```
+
+`r about_term_message`
+
+
+
+\newpage
+
+# 推移の概観
+
+四半期毎に集計されたデータについて、
+そのトレンドを見るため、
+一般化加法線形モデル(GAM)による回帰線を図示します。
+但し、この回帰分析における、
+説明変数は、四半期毎時点データを数値として利用している事、
+及び、その他の説明変数は組み込んでいないことから、
+簡易的にトレンドを視覚化する程度の目的の精度であることに注意が必要です。
+
+一方、取引の程度やその分布を把握し、
+これらとトレンドの傾きの程度を確認するため、
+散布図を重ねたものを合わせて図示します。
+この散布図も、状態が把握しやすいように横方向
+（時間方向）にずらされており、
+実際には、見た目通りにx軸方向へ分布しているわけではないことに
+注意が必要です。
+
+
+```{r echo=FALSE, fig.height=6.5, fig.width=7, message=FALSE}
+
+# スムース曲線
+g1 <- target_data %>%
+  ggplot() +
+  geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
+              method = "gam", formula = y ~ s(x, bs = "cs")) +
+  ggtitle(stringr::str_c(target_name, "の取引総額に関する回帰線"))+
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  xlab(label = "取引時点（四半期毎）")
+
+# スムース曲線に事例ポイントを重ねる
+g2 <- target_data %>%
+  mutate(q_label = retiex::style_quarter_date(t_date)) %>% 
+  ggplot() +
+  geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
+              method = "gam", formula = y ~ s(x, bs = "cs")) +
+  geom_jitter(mapping = aes(x = t_date, y = `取引総額`, color = q_label), alpha = 0.5) +
+  ggtitle( stringr::str_c(target_name, 
+                 "の取引総額に関する回帰曲線と事例プロット")) + 
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  xlab(label = "取引時点（四半期毎）") +
+  theme(legend.position = "none")
+
+# 表をまとめて出力するツール
+gridExtra::grid.arrange(g1,g2, nrow = 2)
+```
+
+\newpage
+
+
+# 各期毎の要約統計量
+
+```{r echo=FALSE}
+#四半期毎の統計量の表とその増減比の表を作成
+
+# 実際の数値と列名等を
+# 人が読みやすいようにする
+table_summary <- 
+  target_data %>%
+  retiex::retiex_summary() %>% 
+  dplyr::select(date:count) %>% 
+  dplyr::transmute(`取引時点` = retiex::style_quarter_date(date),
+         `平均` = retiex::style_yen(mean, 3, "千円"),
+         `標準偏差` = retiex::style_yen(sd, 3, "千円"),
+         `最小値` = retiex::style_yen(min, 3, "千円"),
+         `第１四分位` = retiex::style_yen(qu1, 3, "千円"),
+         `中央値` = retiex::style_yen(median, 3, "千円"),
+         `第３四分位` = retiex::style_yen(qu3, 3, "千円"),
+         `最大値` = retiex::style_yen(max, 3, "千円"),
+         `事例数` = format(count, scientific = F, big.mark = ",")
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+
+table_summary_change_rate_diff <- 
+  target_data %>%
+  retiex::retiex_summary() %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::select(date, crd_mean:crd_count) %>% 
+  dplyr::transmute(`取引時点` = retiex::style_quarter_date(date),
+         `平均` = retiex::style_percent(crd_mean, keta = 1, diff = T),
+         `標準偏差` = retiex::style_percent(crd_sd, keta = 1, diff = T),
+         `最小値` = retiex::style_percent(crd_min, keta = 1, diff = T),
+         `第１四分位` = retiex::style_percent(crd_qu1, keta = 1, diff = T),
+         `中央値` = retiex::style_percent(crd_median, keta = 1, diff = T),
+         `第３四分位` = retiex::style_percent(crd_qu3, keta = 1, diff = T),
+         `最大値` = retiex::style_percent(crd_max, keta = 1, diff = T),
+         `事例数` = retiex::style_percent(crd_count, keta = 1, diff = T),
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+  
+```
+
+
+
+## 各期の数値について
+
+
+```{r echo=FALSE}
+# 一覧表の表示
+
+table_summary %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(target_name, "の統計量")) %>% 
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=3.5, fig.width=7, message=FALSE}
+# 平均値のグラフ
+
+target_data %>% 
+  retiex::retiex_summary() %>% 
+  dplyr::mutate(factor_date = factor(date %>% retiex::style_quarter_date())) %>% 
+  ggplot() +
+  geom_line(mapping = aes(x = factor_date, 
+                          y = mean, 
+                          group = 1), 
+            color = "red") +
+  ggtitle(paste0(target_name, "に於ける取引総額の平均の推移"))+
+  xlab(label = "取引時点") +
+  ylab(label = "取引総額の平均") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+  
+```
+
+
+\newpage
+
+## 直前期に対する増減比率
+
+```{r echo=FALSE}
+table_summary_change_rate_diff %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(target_name, "の統計量の対前期増減比率")) %>% 
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=3.5, fig.width=7, message=FALSE, warning=FALSE}
+
+diff_data <- 
+  target_data %>%
+  retiex::retiex_summary() %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(date))) %>% 
+  dplyr::group_by(q_date)
+
+  
+diff_data %>%
+  ggplot() +
+  geom_line(mapping = aes(x = q_date, y = crd_mean, group = 1), 
+            color = "red") +
+  geom_hline(yintercept = 0) +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(target_name,"に於ける取引総額平均の増減比の推移"))+
+  xlab(label = "取引時点") +
+  ylab(label = "増減比") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_percent(v, 1, T)
+                       }) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+```
+
+\newpage
+
+## 各四半期毎の要約統計量を視覚化
+
+
+```{r echo=FALSE, fig.height=7.5, fig.width=7, message=FALSE}
+
+# geom_boxplotでは、平均位置の表示がないので、
+# 平均を計算したデータを別途用意して、合成する
+# x軸の時間データは、
+# 数値データからファクタ(q_data列)として作り変える
+
+
+# 平均を含むデータ
+mean_data <- target_data %>% 
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  dplyr::group_by(q_date) %>% 
+  dplyr::summarise(m = mean(`取引総額`))
+
+# バイオリンプロット  
+summary_violin_graph <- 
+  target_data %>%
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  ggplot() +
+  geom_violin(mapping = aes(x = q_date, y = `取引総額`))+
+  ggtitle(paste0(target_name,"の取引総額のバイオリンプロット"))+
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  xlab(label = "取引時点") + 
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# 箱ひげ　プラス　平均ラインの上書き
+summary_box_graph <- 
+  target_data %>%
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  ggplot() +
+  geom_boxplot(mapping = aes(x = q_date, y = `取引総額`), 
+               varwidth = TRUE) +
+  
+  #平均表示の重ね書き
+  geom_point(data = mean_data, mapping = aes(x = q_date, y = m), 
+             color = "red", shape = 4) +
+  geom_line(data = mean_data, 
+            mapping = aes(x = q_date, y = m, group = 1), 
+            color = "blue") +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(target_name,"の取引総額の箱ひげ図"))+
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  xlab(label = "取引時点") +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# まとめて一つのグラフにする
+gridExtra::grid.arrange(summary_violin_graph, 
+             summary_box_graph,
+             nrow = 2)
+```
+
+
+\newpage
+
+
+# 1年を周期とする移動平均等
+
+
+```{r echo=FALSE}
+#四半期毎の統計量の表とその増減比の表を作成
+
+# 実際の数値と列名等を
+# 人が読みやすいようにする
+table_rolling_summary <- 
+  target_data %>%
+  retiex::retiex_rolling_summary() %>% 
+  dplyr::select(date:count) %>% 
+  dplyr::transmute(`取引時点` = retiex::style_rolling_term_quarter(date),
+         `平均` = retiex::style_yen(mean, 3, "千円"),
+         `標準偏差` = retiex::style_yen(sd, 3, "千円"),
+         `最小値` = retiex::style_yen(min, 3, "千円"),
+         `第１四分位` = retiex::style_yen(qu1, 3, "千円"),
+         `中央値` = retiex::style_yen(median, 3, "千円"),
+         `第３四分位` = retiex::style_yen(qu3, 3, "千円"),
+         `最大値` = retiex::style_yen(max, 3, "千円"),
+         `事例数` = format(count, scientific = F, big.mark = ",")
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+
+table_rolling_summary_crd <- 
+  target_data %>%
+  retiex::retiex_rolling_summary() %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::select(date, crd_mean:crd_count) %>% 
+  dplyr::transmute(`取引時点` = retiex::style_rolling_term_quarter(date),
+         `平均` = retiex::style_percent(crd_mean, keta = 1, diff = T),
+         `標準偏差` = retiex::style_percent(crd_sd, keta = 1, diff = T),
+         `最小値` = retiex::style_percent(crd_min, keta = 1, diff = T),
+         `第１四分位` = retiex::style_percent(crd_qu1, keta = 1, diff = T),
+         `中央値` = retiex::style_percent(crd_median, keta = 1, diff = T),
+         `第３四分位` = retiex::style_percent(crd_qu3, keta = 1, diff = T),
+         `最大値` = retiex::style_percent(crd_max, keta = 1, diff = T),
+         `事例数` = retiex::style_percent(crd_count, keta = 1, diff = T),
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+  
+```
+
+
+
+## 各期の数値について
+
+
+```{r echo=FALSE}
+# 一覧表の表示
+
+table_rolling_summary %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(target_name, "の統計量")) %>% 
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=3.5, fig.width=7, message=FALSE}
+# 平均値のグラフ
+
+target_data %>% 
+  retiex::retiex_rolling_summary() %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(date))) %>% 
+  ggplot() +
+  geom_line(mapping = aes(x = factor_date, 
+                          y = mean, 
+                          group = 1), 
+            color = "red") +
+  ggtitle(paste0(target_name,"に於ける取引総額の移動平均の推移"))+
+  xlab(label = "取引時点") +
+  ylab(label = "取引総額の移動平均") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+```
+
+
+\newpage
+
+## 直前期に対する増減比率
+
+```{r echo=FALSE}
+table_rolling_summary_crd %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(target_name, "の統計量の対前期増減比率")) %>% 
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=3.5, fig.width=7, message=FALSE, warning=FALSE}
+
+diff_data <- 
+  target_data %>%
+  retiex::retiex_rolling_summary() %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::mutate(q_date = factor(retiex::style_rolling_term_quarter(date)))
+
+  
+diff_data %>%
+  ggplot() +
+  geom_line(mapping = aes(x = q_date, y = crd_mean, group = 1), 
+            color = "red") +
+  geom_hline(yintercept = 0) +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(target_name,"に於ける取引総額移動平均の増減比の推移"))+
+  xlab(label = "取引時点") +
+  ylab(label = "増減比") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_percent(v, 1, T)
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+\newpage
+
+## 移動平均等の要約統計量を視覚化
+
+
+```{r echo=FALSE, fig.height=7.5, fig.width=7, message=FALSE}
+
+# geom_boxplotでは、平均位置の表示がないので、
+# 平均を計算したデータを別途用意して、合成する
+# x軸の時間データは、
+# 数値データからファクタ(q_data列)として作り変える
+
+
+# 平均を含むデータ
+mean_data <- 
+  target_data %>%
+  retiex::retiex_rolling_summary() %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(date)))
+
+# バイオリンプロット  
+roll_summary_violin_graph <- 
+  target_data %>%
+  retiex::transform_quarter_rolling_format(t_date) %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
+  ggplot() +
+  geom_violin(mapping = aes(x = factor_date, y = `取引総額`))+
+  ggtitle(paste0(target_name,"の取引総額のバイオリンプロット"))+
+  xlab(label = "取引時点") + 
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 箱ひげ　プラス　平均ラインの上書き
+roll_summary_box_graph <- 
+  target_data %>%
+  retiex::transform_quarter_rolling_format(t_date) %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
+
+  ggplot() +
+  geom_boxplot(mapping = aes(x = factor_date, y = `取引総額`), 
+               varwidth = TRUE) +
+  
+  #平均表示の重ね書き
+  geom_point(data = mean_data, mapping = aes(x = factor_date, y = mean), 
+             color = "red", shape = 4) +
+  geom_line(data = mean_data, 
+            mapping = aes(x = factor_date, y = mean, group = 1), 
+            color = "blue") +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(target_name,"の取引総額の箱ひげ図"))+
+  xlab(label = "取引時点") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# まとめて一つのグラフにする
+gridExtra::grid.arrange(roll_summary_violin_graph, 
+             roll_summary_box_graph,
+             nrow = 2)
+```
+
+
+\newpage
+
+# 付録
+
+## 箱ひげ図（ボックスプロット）について
+
+ボックスプロットの横幅は、標本の量を反映しています。
+また、バツ印は平均の位置を示しています。
+
+
+## １年を周期とする移動平均等について
+
+四半期毎データには季節間の周期変動が含まれると考えられるので、
+これらの影響を小さくするために、
+対象となる期とその前３期を含めて１年間分のデータ毎で纏め、
+それらについての統計量を把握しています。
+
+
+## 「`r report_theme`」に関するフィルタの定義（R言語）
+
+本レポート内で、不動産取引価格情報データから
+「`r report_theme`」を抽出するために、
+次のフィルタコードを適用しています。
+
+```{r}
+# フィルタ関数の定義内容
+print(report_filter)
+```
+
+
+
+\newpage
+
+# レポート作成ツールrepocoについて
+
+このレポートは、Rパッケージ「repoco」(report collection レポートコレクション)から出力されています。
+
+repocoは、githubの以下のリポジトリで開発中です。
+
+https://github.com/syunsuke/repoco
+
+また、これをforkしたものを以下のリポジトリで公開中です。
+
+https://github.com/rea-osaka/repoco
+
+
+## ライセンスについて
+
+repocoは、MITライセンスのもとで配布しています。
+ライセンス条項に同意しない場合には、利用することが出来ません。
+
+ここで、同意する上で特に注意して頂きたいのは、
+MITライセンス配布の本ツールを利用する場合に
+そこから出力されたレポートに基づいて問題が生じた場合でも、
+配布側は責任を追うことが無いということです。
+よろしくお願い致します。
+
+また、利用するデータが国土交通省が公表する不動産取引価格情報である場合、それらのデータについては、国土交通省側のライセンスの基に従う必要があることにも注意して下さい。
+
+
+

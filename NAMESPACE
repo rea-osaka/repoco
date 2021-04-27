@@ -2,9 +2,9 @@
 
 export(newhouse_quarter_report)
 export(render_wrapper)
-export(repoco_apartment_report)
-export(repoco_newhouse_report)
-export(repoco_office_report)
+export(repoco_apartment_quarter)
+export(repoco_newhouse_quarter)
+export(repoco_office_quarter)
 export(rolling_mean_linegraph)
 export(rolling_mean_table)
 export(simple_mean_linegraph)

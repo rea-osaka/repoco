@@ -1,0 +1,233 @@
+---
+title: '`r paste0(title_from_rwfunc, "に於ける不動産価格の推移（四半期毎）")`'
+author: '`r author_from_rwfunc`'
+date: '`r Sys.Date()`'
+output: 
+  pdf_document:
+    latex_engine: lualatex
+    number_sections: true
+    toc: true
+documentclass: ltjsarticle
+classoption: twoside
+header-includes:
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhf{}
+- \fancyhead[LE]{\leftmark}
+- \fancyhead[RO]{\rightmark}
+- \fancyfoot[LE,RO]{\thepage}
+- \fancyfoot[CE,CO]{`r paste0(title_from_rwfunc, "に於ける不動産価格の推移（四半期毎）by repoco")`}
+- \renewcommand{\footrulewidth}{0.4pt}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# グラフ内で日本語を表示するための処理テンプレート
+checkopt <- knitr::opts_knit$get("rmarkdown.pandoc.to") 
+if(is.null(checkopt)){checkopt <- ""}
+
+if (checkopt %in% c("beamer", "latex")) {
+  options(device = function(file, width = 7, height = 3, ...) {
+    cairo_pdf(tempfile(), width = width, height = height, ...)
+  })
+  knitr::opts_chunk$set(dev="cairo_pdf", dev.args=list(family="ipa"))
+}
+
+# このテンプレートについて
+
+# 外部から引き継ぐ変数
+# data_to_report      data.frame retiデータ等
+# title_to_report string     データ集合を表す範囲を表す名前
+input_data <- data_from_rwfunc
+target_name <- title_from_rwfunc
+bcost <- bcost_from_rwfunc
+durability <- durability_from_rwfunc
+
+# 外部から引き継ぐ変数の内
+# 次のものはタイトル等でそのまま使われる
+# title_from_rwfunc
+# author_from_rwfunc
+
+##########################################################
+#
+# //////////// カスタマイズ部分 ///////////
+#
+# 内部の変数
+# 以下の内容を作りたいレポートのテーマに即して書き換える
+##########################################################
+# report_theme テーマについてのタイトル
+report_theme <- "事務所ビル"
+
+# 注目する値
+# 取引総額系に特化している
+# target_value <- "取引総額"
+
+sd_n <- 2
+
+# theme_condition テーマの条件の文書
+theme_condition <- sprintf("
+- 土地と建物一体取引
+- 建物の用途が「事務所」を含む
+
+尚、対象データ全体の平均及び標準偏差を求め、
+その平均の位置から標準偏差の%s倍より外にあるデータは
+はずれ値として除外しています。
+", sd_n)
+
+# report_filter関数の定義
+# テーマに合わせてデータをどうフィルタリングするか定義する
+
+# library(tidyverse)
+# library(reti)
+report_filter <- function(df){
+  df %>% 
+    dplyr::filter(stringr::str_detect(`建物用途`, "事務所")) %>% 
+    retiex::filter_by_sd(`取引総額`, n = sd_n)
+}
+
+
+# 配分時に想定する建物の単価と耐用年数
+
+# 建物単価
+building_unit_cost <- bcost
+# 経済的耐用年数
+building_durability <- durability
+
+building_unit_cost_str <- retiex::style_yen(building_unit_cost,0,"円／㎡")
+building_durability_str <- paste0(building_durability,"年")
+
+
+
+pre_target_data <- 
+  input_data %>% 
+  report_filter() %>% 
+  retiex::retiex_add_assumption_land_unit_price(
+    building_unit_cost,
+    building_durability) %>% 
+  dplyr::filter(!is.na(assumption_land_unit_price)) %>% 
+  dplyr::filter(assumption_land_unit_price >= 0)
+
+target_data <- 
+  input_data %>% 
+  report_filter()
+
+```
+
+
+\newpage
+
+# このレポートについて
+
+このレポートは、
+国土交通省が公表する「不動産取引価格情報」のデータに基づいて、
+`r target_name`の`r report_theme`の価格に関する統計データを作成し、
+その各期間の各統計数値の変化を数値とグラフでレポートするものです。
+
+また、本レポートでは、土地と建物の一体取引に係る取引総額についての分析、
+更に、取引データから推定した土地単価の推移の分析を行います。
+
+
+不動産価格の動向把握の**参考として**利用してください。
+
+尚、国土交通省が公表する「不動産取引価格情報」は、
+以下のURLから取得することが出来ます。
+
+https://www.land.mlit.go.jp/webland/download.html
+
+\newpage
+
+```{r child=system.file("template", "part_about_report_theme.Rmd", package = "repoco")}
+# テーマについて
+```
+
+
+```{r child=system.file("template", "part_howto_assume_lup.Rmd", package = "repoco")}
+# 想定土地単価の求め方
+```
+
+
+```{r child=system.file("template", "part_total_price.Rmd", package = "repoco")}
+# 土地と建物の取引総額の推移についての分析パート
+```
+
+
+```{r child=system.file("template", "part_assumed_land_unit_price.Rmd", package = "repoco")}
+# 推定土地単価の推移についての分析パート
+```
+
+
+# 付録
+
+## 回帰分析について
+
+回帰線とともに表示される散布図については、
+見やすさのために横方向（時間方向）に適当にずらされており、
+実際には、見た目通りにx軸方向へ分布しているわけではないこと
+（プロットが同色のものが同期間内の事例である事を示しており、
+その期間内の何時かは横軸に反映されていません）に注意が必要です。
+
+
+## 1年を１周期とした四半期毎の移動集計について
+
+四半期毎データには季節間の周期変動が含まれると考えられるので、
+これらの影響を小さくするために、
+対象となる期とその前３期を含めて１年間分のデータ毎で纏め、
+それらについての統計量を把握しています。
+
+
+## 「`r report_theme`」に関するフィルタの定義（R言語）
+
+入力されたデータに対し、
+「`r report_theme`」を抽出するために、
+本レポートの内部で次のフィルタコードを適用しています。
+
+
+```{r}
+# フィルタ関数の定義内容
+print(report_filter)
+```
+
+
+## レポート作成ツールrepocoについて
+
+このレポートは、Rパッケージ「repoco」(report collection レポートコレクション)から出力されています。
+
+repocoは、githubの以下のリポジトリで開発中です。
+テンプレートの仕様は著しく変化する場合があることに注意して下さい。
+
+https://github.com/syunsuke/repoco
+
+また、これをforkしたものを以下のリポジトリで公開中です。
+
+https://github.com/rea-osaka/repoco
+
+
+## ライセンスについて
+
+repocoは、MITライセンスのもとで配布しています。
+ライセンス条項に同意しない場合には、利用することが出来ません。
+
+ここで、同意する上で特に注意して頂きたいのは、
+MITライセンス配布の本ツールを利用する場合に
+そこから出力されたレポートに基づいて問題が生じた場合でも、
+配布側は責任を追うことが無いということです。
+よろしくお願い致します。
+
+また、利用するデータが国土交通省が公表する不動産取引価格情報である場合、それらのデータについては、国土交通省側のライセンスの基に従う必要があることにも注意して下さい。
+
+

@@ -1,0 +1,292 @@
+```{r include=FALSE}
+title_string <- paste0(target_name,"に於ける",report_theme,"")
+```
+
+# `r title_string`の推定土地単価の推移
+
+## 推定土地単価の推移の概観
+
+`r title_string`の取引動向を概観するため、
+回帰分析曲線(モデルは出力メッセージ参照)、及び、各事例の描画を行うと以下の通りとなります。
+
+\hspace{1cm}
+
+
+```{r echo=FALSE, fig.height=6.0, fig.width=7}
+
+pre_target_data %>%
+  mutate(q_label = retiex::style_quarter_date(t_date)) %>% 
+  ggplot() +
+  geom_smooth(mapping = aes(x = t_date, y = assumption_land_unit_price)) +
+  
+  geom_jitter(mapping = aes(x = t_date, y = assumption_land_unit_price, color = q_label), alpha = 0.5) +
+  ggtitle(paste0(title_string,"の推定土地単価に関する動向")) + 
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 0, "円／㎡")
+                       }) +
+  xlab(label = "取引時点（四半期毎）") +
+  ylab(label = "推定土地単価") +
+  theme(legend.position = "none")
+```
+
+
+
+\newpage
+
+## 四半期毎に集計された結果の分析
+
+### 各種数値とその推移
+
+
+```{r echo=FALSE}
+
+######################################################
+# 四半期毎の集計データの作成
+######################################################
+table_summary <- 
+  target_data %>%
+  retiex::retiex_summary_of_alup(building_unit_cost,building_durability) %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::transmute(`取引時点` = retiex::style_quarter_date(date),
+         `平均` = retiex::style_yen(mean, 0, "円／㎡"),
+         `平均の増減比` = retiex::style_percent(crd_mean, keta = 1, diff = T),
+         `中央値` = retiex::style_yen(median, 0, "円／㎡"),
+         `中央値の増減比` = retiex::style_percent(crd_median, keta = 1, diff = T),
+         `事例数` = format(count, scientific = F, big.mark = ","),
+         `事例数の増減比` = retiex::style_percent(crd_count, keta = 1, diff = T), 
+         `標準偏差` = retiex::style_yen(sd, 0, "円／㎡"),
+         `最小値` = retiex::style_yen(min, 0, "円／㎡"),
+         `第１四分位` = retiex::style_yen(qu1, 0, "円／㎡"),
+         `第３四分位` = retiex::style_yen(qu3, 0, "円／㎡"),
+         `最大値` = retiex::style_yen(max, 0, "円／㎡"),
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+
+######################################################
+# 表の表示
+######################################################
+table_summary %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(title_string, "の推定土地単価に関する各種数値")) %>%
+  kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
+# 平均を含むデータ
+mean_data <- pre_target_data %>% 
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  dplyr::group_by(q_date) %>% 
+  dplyr::summarise(m = mean(assumption_land_unit_price))
+
+# 箱ひげ　プラス　平均ラインの上書き
+pre_target_data %>%
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  ggplot() +
+  geom_boxplot(mapping = aes(x = q_date, y = assumption_land_unit_price), 
+               varwidth = TRUE) +
+  
+  #平均表示の重ね書き
+  geom_point(data = mean_data, mapping = aes(x = q_date, y = m), 
+             color = "red", shape = 4) +
+  geom_line(data = mean_data, 
+            mapping = aes(x = q_date, y = m, group = 1), 
+            color = "blue") +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(title_string,"の推定土地単価の推移"))+
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 0, "円／㎡")
+                       }) +
+  xlab(label = "取引時点") +
+  ylab(label = "推定土地単価") +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+```
+
+\newpage
+
+
+### 各期間毎の分布と対前期間増減比の推移
+
+```{r echo=FALSE, fig.height=3.6, fig.width=7, message=FALSE, warning=FALSE}
+# バイオリンプロット  
+pre_target_data %>%
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
+  ggplot() +
+  geom_violin(mapping = aes(x = q_date, y = assumption_land_unit_price))+
+  ggtitle(paste0(title_string,"の推定土地単価の分布"))+
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 0, "円／㎡")
+                       }) +
+  xlab(label = "取引時点") + 
+  ylab(label = "推定土地単価") + 
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+```
+
+\hspace{1cm}
+
+
+```{r echo=FALSE, fig.height=3.6, fig.width=7, message=FALSE, warning=FALSE}
+# 増減比の折れ線グラフ
+target_data %>%
+  retiex::retiex_summary_of_alup(building_unit_cost,building_durability) %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::mutate(q_date = factor(retiex::style_quarter_date(date))) %>% 
+  dplyr::group_by(q_date) %>% 
+
+  ggplot() +
+  geom_line(mapping = aes(x = q_date, y = crd_mean, group = 1), 
+            color = "red") +
+  geom_hline(yintercept = 0) +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(title_string,"の推定土地単価平均の増減比"))+
+  xlab(label = "取引時点") +
+  ylab(label = "増減比") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_percent(v, 1, T)
+                       }) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+```
+
+
+
+\newpage
+
+
+## 1年を１周期として四半期毎に移動集計された結果について
+
+### 各種数値とその推移
+
+
+```{r echo=FALSE}
+
+######################################################
+# 四半期毎の集計データの作成
+######################################################
+table_summary <- 
+  target_data %>%
+  retiex::retiex_rolling_summary_of_alup(building_unit_cost,building_durability) %>%   retiex::add_change_rate_diff_cols() %>% 
+  dplyr::transmute(`取引時点` = retiex::style_rolling_term_quarter(date),
+         `平均` = retiex::style_yen(mean, 0, "円／㎡"),
+         `平均の増減比` = retiex::style_percent(crd_mean, keta = 1, diff = T),
+         `中央値` = retiex::style_yen(median, 0, "円／㎡"),
+         `中央値の増減比` = retiex::style_percent(crd_median, keta = 1, diff = T),
+         `事例数` = format(count, scientific = F, big.mark = ","),
+         `事例数の増減比` = retiex::style_percent(crd_count, keta = 1, diff = T), 
+         `標準偏差` = retiex::style_yen(sd, 0, "円／㎡"),
+         `最小値` = retiex::style_yen(min, 0, "円／㎡"),
+         `第１四分位` = retiex::style_yen(qu1, 0, "円／㎡"),
+         `第３四分位` = retiex::style_yen(qu3, 0, "円／㎡"),
+         `最大値` = retiex::style_yen(max, 0, "円／㎡"),
+         ) %>% 
+  dplyr::arrange(desc(`取引時点`))
+
+######################################################
+# 表の表示
+######################################################
+table_summary %>% 
+  kableExtra::kbl(booktabs = T, 
+      align = "r",
+      caption = stringr::str_c(title_string, "の各種数値")) %>%
+  kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
+  kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
+```
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
+# 平均を含むデータ
+mean_data <- 
+  target_data %>%
+  retiex::retiex_rolling_summary_of_alup(building_unit_cost,building_durability) %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(date)))
+
+
+# 箱ひげ　プラス　平均ラインの上書き
+pre_target_data %>%
+  retiex::transform_quarter_rolling_format(t_date) %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
+
+  ggplot() +
+  geom_boxplot(mapping = aes(x = factor_date, y = assumption_land_unit_price), 
+               varwidth = TRUE) +
+  
+  #平均表示の重ね書き
+  geom_point(data = mean_data, mapping = aes(x = factor_date, y = mean), 
+             color = "red", shape = 4) +
+  geom_line(data = mean_data, 
+            mapping = aes(x = factor_date, y = mean, group = 1), 
+            color = "blue") +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(title_string,"の推定土地単価の推移"))+
+  xlab(label = "取引時点") +
+  ylab(label = "推定土地単価") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 0, "円／㎡")
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+\newpage
+
+
+### 各期間毎の分布と対前期間増減比の推移
+
+```{r echo=FALSE, fig.height=3.6, fig.width=7, message=FALSE, warning=FALSE}
+# バイオリンプロット  
+pre_target_data %>%
+  retiex::transform_quarter_rolling_format(t_date) %>% 
+  dplyr::mutate(factor_date = 
+           factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
+  ggplot() +
+  geom_violin(mapping = aes(x = factor_date, y = assumption_land_unit_price))+
+  ggtitle(paste0(title_string,"の推定土地単価の分布"))+
+  xlab(label = "取引時点") + 
+  ylab(label = "推定土地単価") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 0, "円／㎡")
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+\hspace{1cm}
+
+
+```{r echo=FALSE, fig.height=3.6, fig.width=7, message=FALSE, warning=FALSE}
+target_data %>%
+  retiex::retiex_rolling_summary_of_alup(building_unit_cost,building_durability) %>% 
+  retiex::add_change_rate_diff_cols() %>% 
+  dplyr::mutate(q_date = factor(retiex::style_rolling_term_quarter(date))) %>% 
+  
+  ggplot() +
+  geom_line(mapping = aes(x = q_date, y = crd_mean, group = 1), 
+            color = "red") +
+  geom_hline(yintercept = 0) +
+  
+  # 以下は同じ処理
+  ggtitle(paste0(title_string,"の推定土地単価の移動平均の増減比"))+
+  xlab(label = "取引時点") +
+  ylab(label = "増減比") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_percent(v, 1, T)
+                       }) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+\newpage

@@ -1,0 +1,62 @@
+```{r include=FALSE}
+
+# 入力データ件数
+input_all_rows <- nrow(target_data)
+
+# 選別後のデータ件数
+alup_selected_data_rows <- nrow(pre_target_data)
+
+# 除外数
+alup_exterme_data_rows <- input_all_rows - alup_selected_data_rows
+
+# 除外割合
+alup_exterme_data_rate <- alup_exterme_data_rows / input_all_rows
+
+
+alup_result_message <- 
+  sprintf("
+  この時、敷地面積が不明なもの、築後年数が不明なもの、
+更に、推定土地単価がマイナスとなるものを合わせた%s（本レポート対象データ数%sの内%s）のデータを除外しています。",
+retiex::style_yen(alup_exterme_data_rows,0,"件"),
+retiex::style_yen(input_all_rows,0,"件"),
+retiex::style_percent(alup_exterme_data_rate,2,F)
+)
+
+
+```
+
+
+
+## 土地単価の推定について
+
+本レポートにおいては、建物の再調達原価の単価と経済的耐用年数について、
+以下の通り認定します。
+
+- 建物の再調達原価の単価を`r building_unit_cost_str`と認定
+- 建物の経済的耐用年数を`r building_durability_str`と認定
+
+そして、土地と建物の一体取引のデータに付随する情報から、
+建物の推定価格を以下の通り求めます。
+
+\[
+推定建物価格 = \overset{認定建物単価}{`r building_unit_cost_str`} \times 建物延床面積 \times \frac{\overset{経済的残存年数}{`r building_durability_str`}-建築後年数}{\overset{経済的残存年数}{`r building_durability_str`}}
+\]
+
+また、元のデータで、建物の延べ床面積が2000㎡以上とされているものについては、
+敷地面積に基準容積率を乗じて得た数値を認定建物延べ床面積として採用しています。
+
+
+
+次に、この求められた推定建物価格を取引総額から差し引き、
+これを土地面積で除したものを推定土地単価としました。
+
+\[
+推定土地単価 = (取引総額-推定建物価格) \div 土地面積
+\]
+
+
+`r alup_result_message`
+
+
+
+\newpage

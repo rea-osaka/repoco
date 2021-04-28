@@ -1,8 +1,12 @@
-# 推定土地単価にの推移についての分析
+```{r include=FALSE}
+title_string <- paste0(target_name,"に於ける",report_theme,"")
+```
+
+# `r title_string`の推定土地単価の推移
 
 ## 推定土地単価の推移の概観
 
-`r target_name`に関する動向を概観するため、
+`r title_string`の取引動向を概観するため、
 回帰分析曲線(モデルは出力メッセージ参照)、及び、各事例の描画を行うと以下の通りとなります。
 
 \hspace{1cm}
@@ -16,8 +20,7 @@ pre_target_data %>%
   geom_smooth(mapping = aes(x = t_date, y = assumption_land_unit_price)) +
   
   geom_jitter(mapping = aes(x = t_date, y = assumption_land_unit_price, color = q_label), alpha = 0.5) +
-  ggtitle( stringr::str_c(target_name, 
-                 "の推定土地単価に関する回帰曲線と事例プロット")) + 
+  ggtitle(paste0(title_string,"の推定土地単価に関する動向")) + 
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 0, "円／㎡")
@@ -66,14 +69,14 @@ table_summary <-
 table_summary %>% 
   kableExtra::kbl(booktabs = T, 
       align = "r",
-      caption = stringr::str_c(target_name, "の各種数値の推移")) %>%
+      caption = stringr::str_c(title_string, "の推定土地単価に関する各種数値")) %>%
   kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
   kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
 ```
 
 \hspace{1cm}
 
-```{r echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
 # 平均を含むデータ
 mean_data <- pre_target_data %>% 
   dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
@@ -95,7 +98,7 @@ pre_target_data %>%
             color = "blue") +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"の推定土地単価の箱ひげ図と平均の推移"))+
+  ggtitle(paste0(title_string,"の推定土地単価の推移"))+
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 0, "円／㎡")
@@ -116,7 +119,7 @@ pre_target_data %>%
   dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
   ggplot() +
   geom_violin(mapping = aes(x = q_date, y = assumption_land_unit_price))+
-  ggtitle(paste0(target_name,"の推定土地単価のバイオリンプロット"))+
+  ggtitle(paste0(title_string,"の推定土地単価の分布"))+
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 0, "円／㎡")
@@ -143,7 +146,7 @@ target_data %>%
   geom_hline(yintercept = 0) +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"に於ける推定土地単価平均の増減比の推移"))+
+  ggtitle(paste0(title_string,"の推定土地単価平均の増減比"))+
   xlab(label = "取引時点") +
   ylab(label = "増減比") +
   scale_y_continuous(labels =
@@ -193,14 +196,14 @@ table_summary <-
 table_summary %>% 
   kableExtra::kbl(booktabs = T, 
       align = "r",
-      caption = stringr::str_c(target_name, "の各種数値の推移")) %>%
+      caption = stringr::str_c(title_string, "の各種数値")) %>%
   kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
   kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
 ```
 
 \hspace{1cm}
 
-```{r echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
 # 平均を含むデータ
 mean_data <- 
   target_data %>%
@@ -227,7 +230,7 @@ pre_target_data %>%
             color = "blue") +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"の推定土地単価の箱ひげ図と平均の推移"))+
+  ggtitle(paste0(title_string,"の推定土地単価の推移"))+
   xlab(label = "取引時点") +
   ylab(label = "推定土地単価") +
   scale_y_continuous(labels =
@@ -250,7 +253,7 @@ pre_target_data %>%
            factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
   ggplot() +
   geom_violin(mapping = aes(x = factor_date, y = assumption_land_unit_price))+
-  ggtitle(paste0(target_name,"の推定土地単価のバイオリンプロット"))+
+  ggtitle(paste0(title_string,"の推定土地単価の分布"))+
   xlab(label = "取引時点") + 
   ylab(label = "推定土地単価") +
   scale_y_continuous(labels =
@@ -275,7 +278,7 @@ target_data %>%
   geom_hline(yintercept = 0) +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"の推定土地単価の移動平均の増減比の推移"))+
+  ggtitle(paste0(title_string,"の推定土地単価の移動平均の増減比"))+
   xlab(label = "取引時点") +
   ylab(label = "増減比") +
   scale_y_continuous(labels =

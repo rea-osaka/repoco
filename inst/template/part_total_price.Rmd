@@ -1,8 +1,14 @@
-# 土地と建物の取引総額の推移についての分析
+```{r include=FALSE}
+title_string <- paste0(target_name,"に於ける",report_theme,"")
+```
+
+
+
+# `r title_string`の取引総額の推移
 
 ## 取引総額の推移動向の概観
 
-`r target_name`に関する動向を概観するため、
+`r title_string`の取引動向を概観するため、
 回帰分析曲線(モデルは出力メッセージ参照)、及び、各事例の描画を行うと以下の通りとなります。
 
 \hspace{1cm}
@@ -17,8 +23,7 @@ target_data %>%
   # geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
   #             method = "gam", formula = y ~ s(x, bs = "cs")) +
   geom_jitter(mapping = aes(x = t_date, y = `取引総額`, color = q_label), alpha = 0.5) +
-  ggtitle( stringr::str_c(target_name, 
-                 "の取引総額に関する回帰曲線と事例プロット")) + 
+  ggtitle(paste0(title_string,"の取引総額に関する動向")) + 
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 3, "千円")
@@ -65,14 +70,14 @@ table_summary <-
 table_summary %>% 
   kableExtra::kbl(booktabs = T, 
       align = "r",
-      caption = stringr::str_c(target_name, "の各種数値の推移")) %>%
+      caption = stringr::str_c(title_string, "の取引総額に関する各種数値")) %>%
   kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
   kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
 ```
 
 \hspace{1cm}
 
-```{r echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
 
 # 平均を含むデータ
 mean_data <- target_data %>% 
@@ -95,7 +100,7 @@ target_data %>%
             color = "blue") +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"の取引総額の箱ひげ図と平均の推移"))+
+  ggtitle(paste0(title_string,"の取引総額の推移"))+
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 3, "千円")
@@ -117,7 +122,7 @@ target_data %>%
   dplyr::mutate(q_date = factor(retiex::style_quarter_date(t_date))) %>% 
   ggplot() +
   geom_violin(mapping = aes(x = q_date, y = `取引総額`))+
-  ggtitle(paste0(target_name,"の取引総額のバイオリンプロット"))+
+  ggtitle(paste0(title_string,"の取引総額の分布"))+
   scale_y_continuous(labels =
                        function(v){
                          retiex::style_yen(v, 3, "千円")
@@ -146,7 +151,7 @@ target_data %>%
   geom_hline(yintercept = 0) +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"に於ける取引総額平均の増減比の推移"))+
+  ggtitle(paste0(title_string,"の取引総額平均の増減比"))+
   xlab(label = "取引時点") +
   ylab(label = "増減比") +
   scale_y_continuous(labels =
@@ -193,7 +198,7 @@ table_rolling_summary <-
 table_rolling_summary %>% 
   kableExtra::kbl(booktabs = T, 
       align = "r",
-      caption = stringr::str_c(target_name, "の各種数値の推移")) %>%
+      caption = stringr::str_c(title_string, "の各種数値")) %>%
   kableExtra::add_header_above(c(" ", "平均" = 2, "中央値" = 2, "事例件数" = 2)) %>%
   kableExtra::kable_styling(latex_options = c("striped", "scale_down", "hold_position"))
 
@@ -202,7 +207,7 @@ table_rolling_summary %>%
 
 \hspace{1cm}
 
-```{r echo=FALSE, fig.height=5, fig.width=7, message=FALSE, warning=FALSE}
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
 
 # 平均を含むデータ
 mean_data <- 
@@ -229,7 +234,7 @@ target_data %>%
             color = "blue") +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"の取引総額の箱ひげ図"))+
+  ggtitle(paste0(title_string,"の取引総額の推移"))+
   xlab(label = "取引時点") +
   scale_y_continuous(labels =
                        function(v){
@@ -252,7 +257,7 @@ target_data %>%
            factor(retiex::style_rolling_term_quarter(roll_label))) %>% 
   ggplot() +
   geom_violin(mapping = aes(x = factor_date, y = `取引総額`))+
-  ggtitle(paste0(target_name,"の取引総額のバイオリンプロット"))+
+  ggtitle(paste0(title_string,"の取引総額の分布"))+
   xlab(label = "取引時点") + 
   scale_y_continuous(labels =
                        function(v){
@@ -277,7 +282,7 @@ target_data %>%
   geom_hline(yintercept = 0) +
   
   # 以下は同じ処理
-  ggtitle(paste0(target_name,"に於ける取引総額移動平均の増減比の推移"))+
+  ggtitle(paste0(title_string,"の取引総額移動平均の増減比"))+
   xlab(label = "取引時点") +
   ylab(label = "増減比") +
   scale_y_continuous(labels =

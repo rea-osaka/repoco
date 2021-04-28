@@ -53,7 +53,7 @@ if (checkopt %in% c("beamer", "latex")) {
 # 外部から引き継ぐ変数
 # data_to_report      data.frame retiデータ等
 # title_to_report string     データ集合を表す範囲を表す名前
-target_data <- data_from_rwfunc
+input_data <- data_from_rwfunc
 target_name <- title_from_rwfunc
 bcost <- bcost_from_rwfunc
 durability <- durability_from_rwfunc
@@ -77,16 +77,17 @@ report_theme <- "事務所ビル"
 # 取引総額系に特化している
 # target_value <- "取引総額"
 
+sd_n <- 2
 
 # theme_condition テーマの条件の文書
-theme_condition <- "
+theme_condition <- sprintf("
 - 土地と建物一体取引
 - 建物の用途が「事務所」を含む
 
 尚、対象データ全体の平均及び標準偏差を求め、
-その平均の位置から標準偏差の4倍より外にあるデータは
+その平均の位置から標準偏差の%s倍より外にあるデータは
 はずれ値として除外しています。
-"
+", sd_n)
 
 # report_filter関数の定義
 # テーマに合わせてデータをどうフィルタリングするか定義する
@@ -96,7 +97,7 @@ theme_condition <- "
 report_filter <- function(df){
   df %>% 
     dplyr::filter(stringr::str_detect(`建物用途`, "事務所")) %>% 
-    retiex::filter_by_sd(`取引総額`)
+    retiex::filter_by_sd(`取引総額`, n = sd_n)
 }
 
 
@@ -108,11 +109,12 @@ building_unit_cost <- bcost
 building_durability <- durability
 
 building_unit_cost_str <- retiex::style_yen(building_unit_cost,0,"円／㎡")
+building_durability_str <- paste0(building_durability,"年")
 
 
 
 pre_target_data <- 
-  target_data %>% 
+  input_data %>% 
   report_filter() %>% 
   retiex::retiex_add_assumption_land_unit_price(
     building_unit_cost,
@@ -121,7 +123,7 @@ pre_target_data <-
   dplyr::filter(assumption_land_unit_price >= 0)
 
 target_data <- 
-  target_data %>% 
+  input_data %>% 
   report_filter()
 
 ```
@@ -147,91 +149,21 @@ target_data <-
 
 https://www.land.mlit.go.jp/webland/download.html
 
+\newpage
 
-## `r report_theme`について
-
-ここでいう「`r report_theme`」とは、
-不動産取引価格情報のデータから、
-次の条件で抽出したデータとしています。
-
-`r theme_condition`
-
-
-```{r include=FALSE}
-# 期間の自動取得
-
-term <- range(target_data$t_date)
-term_num <- retiex::calc_quarter_term(term[1],term[2])
-
-if(term_num %% 4 == 0){
-  term_str <- sprintf("%d年間", term_num %/% 4)
-  
-}else if(term_num < 4){
-  term_str <- 
-    sprintf("%d四半期間", term_num)
-  
-}else{
-  term_str <- 
-    sprintf("%d年と%d四半期間", term_num %/% 4, term_num %% 4)
-}
-
-
-about_term_message <-
-  stringr::str_c( 
-    "本レポートでは、上記の条件により抽出された、",
-    sprintf("%sから、%sの%sについて、",
-            retiex::style_quarter_date(term[1]),
-            retiex::style_quarter_date(term[2]),
-            term_str),
-    sprintf("%sにおける%s",target_name, report_theme),
-    sprintf("に係る事例 %s 件のデータを利用しています。",
-            format(nrow(target_data), big.mark =","))
-  )
-
+```{r child=system.file("template", "part_about_report_theme.Rmd", package = "repoco")}
+# テーマについて
 ```
 
-`r about_term_message`
 
+```{r child=system.file("template", "part_howto_assume_lup.Rmd", package = "repoco")}
+# 想定土地単価の求め方
+```
 
-
-\newpage
-
-
-## 土地単価の推定について
-
-まず、土地と建物の一体取引に係る情報から、
-建物の推定価格を以下の通り求めます。
-
-\[
-推定建物価格 = 認定建物単価 \times 建物延床面積 \times \frac{経済的耐用年数-建築後年数}{経済的残存年数}
-\]
-
-この際、本レポートにおいては、建物の再調達原価の単価と経済的耐用年数について、
-以下の通り認定して計算します。
-また、元のデータで、建物の延べ床面積が2000㎡以上とされているものについては、
-敷地面積に基準容積率を乗じて得た数値を認定建物延べ床面積として採用しています。
-
-- 建物の再調達原価の単価を`r building_unit_cost_str`と認定
-- 建物の経済的耐用年数を`r building_durability`年と認定
-
-
-次に、この求められた推定建物価格を取引総額から差し引き、
-これを土地面積で除したものを推定土地単価としました。
-
-\[
-推定土地単価 = (取引総額-推定建物価格) \div 土地面積
-\]
-
-この時、敷地面積が不明なもの、築後年数が不明なもの、
-更に、推定土地単価がマイナスとなるものをデータから省いています。
-
-
-\newpage
 
 ```{r child=system.file("template", "part_total_price.Rmd", package = "repoco")}
 # 土地と建物の取引総額の推移についての分析パート
 ```
-
 
 
 ```{r child=system.file("template", "part_assumed_land_unit_price.Rmd", package = "repoco")}

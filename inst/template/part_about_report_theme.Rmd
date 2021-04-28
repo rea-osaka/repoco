@@ -1,0 +1,107 @@
+```{r include=FALSE}
+
+# 入力データ件数
+input_all_rows <- nrow(input_data)
+
+# 選別後のデータ件数
+report_selected_data_rows <- nrow(target_data)
+
+# 除外数
+report_exterme_data_rows <- input_all_rows - report_selected_data_rows
+
+# 除外割合
+report_exterme_data_rate <- report_exterme_data_rows / input_all_rows
+
+
+report_term <- range(target_data$t_date)
+report_term_num <- retiex::calc_quarter_term(report_term[1], report_term[2])
+report_term_str <- ""
+
+if(report_term_num %% 4 == 0){
+  report_term_str <- sprintf("%d年間", report_term_num %/% 4)
+  
+}else if(report_term_num < 4){
+  report_term_str <- 
+    sprintf("%d四半期間", report_term_num)
+  
+}else{
+  report_term_str <- 
+    sprintf("%d年と%d四半期間", report_term_num %/% 4, report_term_num %% 4)
+}
+
+    target_contents <- ""
+
+    data_cities <- unique(target_data$`市名`)
+
+    if(length(data_cities) > 1){
+      target_contents <- sprintf("（%sの合計%s）",
+                                 paste0(data_cities, collapse = "、"),
+                                 retiex::style_yen(length(data_cities),0,"市町村"))
+    }
+
+
+report_result_message <- 
+  sprintf("
+  オリジナル入力データ件数%sのうち、
+  本レポートでは、上記の条件により抽出された、
+  %sから、%sの%sについて、%s%sにおける%sに係る事例 %s 件のデータを利用しています。",
+  retiex::style_yen(input_all_rows, 0, "件"),
+  retiex::style_quarter_date(report_term[1]),
+  retiex::style_quarter_date(report_term[2]),
+  report_term_str,
+  target_name,
+  target_contents,
+  report_theme,
+  report_selected_data_rows)
+  
+##########################################
+# フィルタリンググラフ
+##########################################
+
+tmp_all <- 
+  input_data %>% 
+  mutate(tmp_id = 1:nrow(input_data))
+
+tmp_target <- report_filter(tmp_all)
+
+tmp_all <- 
+  tmp_all %>% 
+  mutate(theme_flag = ifelse((tmp_all$tmp_id %in% tmp_target$tmp_id), T, F))
+
+
+filltering_graph <- 
+ggplot(tmp_all %>% retiex::filter_by_sd(`取引総額`,1)) +
+  geom_histogram(aes(x=`取引総額`, fill = theme_flag))+
+  scale_x_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 3, "千円")
+                       }) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+  ggtitle(paste0("全体データの中の「",report_theme,"」のデータ分布"))+
+  labs(fill = report_theme)
+
+```
+
+
+## `r report_theme`について
+
+本レポートでは、`r target_name`に於けるデータの内、
+「`r report_theme`」に係るデータの分析を行います。
+ここでいう「`r report_theme`」に係るデータとは、
+不動産取引価格情報のデータから、
+次の条件で抽出したデータとしています。
+
+`r theme_condition`
+
+`r report_result_message`
+
+
+\hspace{1cm}
+
+```{r echo=FALSE, fig.height=4, fig.width=7, message=FALSE, warning=FALSE}
+filltering_graph
+```
+
+
+\newpage
+

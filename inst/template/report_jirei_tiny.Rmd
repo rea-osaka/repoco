@@ -1,0 +1,155 @@
+---
+output: 
+  pdf_document:
+    latex_engine: lualatex
+    number_sections: true
+    toc: false
+documentclass: ltjsarticle
+#classoption: twoside
+header-includes:
+- \pagestyle{empty}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage{xcolor}
+#- \setlength{\topmargin}{0mm}
+#- \setlength{\headheight}{-15mm}
+#- \setlength{\headsep}{5mm}
+#- \setlength{\footskip}{0mm}
+- \usepackage[margin=18mm]{geometry}
+#- \usepackage{fancyhdr}
+#- \pagestyle{fancy}
+#- \fancyhf{}
+#- \fancyhead[LE]{\leftmark}
+#- \fancyhead[RO]{\rightmark}
+#- \fancyfoot[LE,RO]{\thepage}
+#- \fancyfoot[CE,CO]{降った}
+#- \renewcommand{\footrulewidth}{0.4pt}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# グラフ内で日本語を表示するための処理テンプレート
+checkopt <- knitr::opts_knit$get("rmarkdown.pandoc.to") 
+if(is.null(checkopt)){checkopt <- ""}
+
+if (checkopt %in% c("beamer", "latex")) {
+  options(device = function(file, width = 7, height = 3, ...) {
+    cairo_pdf(tempfile(), width = width, height = height, ...)
+  })
+  knitr::opts_chunk$set(dev="cairo_pdf", dev.args=list(family="ipa"))
+}
+
+# このテンプレートについて
+library(tidyverse)
+library(reti)
+library(retiex)
+
+# 外部から引き継ぐ変数
+input_data <- data_from_rwfunc
+target_name <- title_from_rwfunc
+
+
+
+```
+
+
+
+\LARGE
+
+`r target_name`の価格動向
+
+\Large
+
+単価の推移
+
+```{r echo=FALSE, fig.height=3.0, fig.width=7, message=FALSE, warning=FALSE}
+target_data %>%
+  filter(stringr::str_detect(`土地種別`,"住宅地")) %>% 
+  filter(`類型区分` %in% c("更地", "建付地", "貸家建付地")) %>% 
+  retiex::filter_by_sd(`土地単価`) %>% 
+  mutate(q_label = retiex::style_quarter_date(t_date)) %>% 
+  ggplot() +
+  # geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
+  #             method = "gam", formula = y ~ s(x, bs = "cs")) +
+  geom_jitter(mapping = aes(x = t_date, y = `土地単価`, color = q_label), alpha = 0.3) +
+  geom_smooth(mapping = aes(x = t_date, y = `土地単価`)) +
+  facet_wrap(.~`類型区分`)+
+  ggtitle("住宅地") + 
+  ylab(label = "取引単価（万円／坪）") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 4, "")
+                       }) +
+  xlab(label = "取引時点") +
+  theme(legend.position = "none")
+
+
+```
+
+
+```{r echo=FALSE, fig.height=3.0, fig.width=7, message=FALSE, warning=FALSE}
+target_data %>%
+  filter(stringr::str_detect(`土地種別`,"商業地")) %>% 
+  filter(`類型区分` %in% c("更地", "建付地", "貸家建付地")) %>% 
+  retiex::filter_by_sd(`土地単価`) %>% 
+  mutate(q_label = retiex::style_quarter_date(t_date)) %>% 
+  ggplot() +
+  # geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
+  #             method = "gam", formula = y ~ s(x, bs = "cs")) +
+  geom_jitter(mapping = aes(x = t_date, y = `土地単価`, color = q_label), alpha = 0.3) +
+  geom_smooth(mapping = aes(x = t_date, y = `土地単価`)) +
+  facet_wrap(.~`類型区分`)+
+  ggtitle("商業地") + 
+  ylab(label = "取引単価（万円／坪）") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_yen(v, 4, "")
+                       }) +
+  xlab(label = "取引時点") +
+  theme(legend.position = "none")
+
+
+```
+
+
+\hspace{0.1cm}
+
+\Large 推定公示価格との乖離の程度
+
+```{r echo=FALSE, fig.height=2.9, fig.width=7, message=FALSE, warning=FALSE}
+target_data %>%
+  filter(kind %in% c("商業地","住宅地")) %>% 
+  filter(`類型区分` %in% c("更地", "建付地", "貸家建付地")) %>% 
+  mutate(point = `土地単価` / (`相続税路線価１`/0.8) - 1) %>% 
+  retiex::filter_by_sd(point) %>% 
+  mutate(q_label = retiex::style_quarter_date(t_date)) %>% 
+  ggplot() +
+  # geom_smooth(mapping = aes(x = t_date, y = `取引総額`),
+  #             method = "gam", formula = y ~ s(x, bs = "cs")) +
+  geom_jitter(mapping = aes(x = t_date, y = point, color = q_label), alpha = 0.3) +
+  geom_smooth(mapping = aes(x = t_date, y = point)) +
+  facet_grid(kind ~ `類型区分`) +
+  ggtitle("") + 
+  ylab(label = "割合(%)") +
+  scale_y_continuous(labels =
+                       function(v){
+                         retiex::style_percent(v, 0, diff = T)
+                       }) +
+  xlab(label = "取引時点") +
+  theme(legend.position = "none")
+
+
+```
+

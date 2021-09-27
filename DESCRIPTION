@@ -1,6 +1,6 @@
 Package: repoco
 Title: report tool collection with templates
-Version: 0.0.3.0000
+Version: 0.0.3.0001
 Authors@R: 
     person(given = "Syunsuke",
            family = "Fukuda",
